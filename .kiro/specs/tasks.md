@@ -8,7 +8,6 @@
   - _需求: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1_
 
 - [x] 2. 数据库设计和 ORM 配置
-
   - 安装和配置 Drizzle ORM 与 SQLite
   - 定义数据库 Schema（orders, delivery_sessions, delivery_routes, frequent_addresses）
   - 创建数据库迁移脚本和初始化配置
@@ -17,50 +16,42 @@
   - _需求: 1.4, 6.2, 6.3, 6.5_
 
 - [x] 3. Nuxt Server API 基础框架
-
-
-
   - 创建 server/api 目录结构和基础配置
   - 实现请求验证、错误处理和响应格式化工具
   - 配置 Nuxt 服务端中间件和插件
   - _需求: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-
-
-
-- [ ] 4. 订单管理 Server API 实现
+- [x] 4. 订单管理 Server API 实现
   - 创建 server/api/orders/目录下的 CRUD 端点文件
   - 实现订单数据验证和错误处理逻辑
-
-
-
-
 
   - 集成 Drizzle ORM 进行数据库操作
   - 实现订单状态管理功能
   - _需求: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 5. 地理编码和地址管理 Server API
+- [x] 5. 地理编码和地址管理 Server API
   - 集成高德地图 Web API 进行地址解析
   - 创建 server/api/geocode.post.ts 地理编码端点
   - 实现 server/api/addresses/frequent 相关端点
   - 添加地址验证和缓存机制
   - _需求: 1.3, 2.2, 6.1, 6.5_
 
-- [ ] 6. 路径优化算法核心实现
+- [x] 6. 路径优化算法核心实现
   - 实现距离矩阵计算功能，调用高德地图 API 获取实际路况距离
   - 编写最近邻算法的路径优化实现
   - 实现 2-opt 局部优化算法
   - 添加算法选择策略，根据订单数量选择合适算法
   - _需求: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 7. 路线优化 Server API 实现
+- [-] 7. 路线优化 Server API 实现
+
   - 创建 server/api/routes/optimize.post.ts 端点
   - 集成路径优化算法到 API 接口
   - 添加路线计算的异步处理和进度反馈
   - 实现路线结果的格式化和返回
 
   - 编写路线优化 API 的集成测试
+
   - _需求: 3.1, 3.2, 3.3, 3.4, 3.5_
 
 - [ ] 8. Nuxt 页面和布局结构

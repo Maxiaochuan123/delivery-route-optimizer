@@ -1,4 +1,4 @@
-import { createError } from './errors';
+import { createAppError } from './errors';
 
 // 验证必填字段
 export const validateRequired = (data: any, fields: string[]) => {
@@ -11,14 +11,14 @@ export const validateRequired = (data: any, fields: string[]) => {
   }
 
   if (missing.length > 0) {
-    throw createError.validation(`Missing required fields: ${missing.join(', ')}`, { missing });
+    throw createAppError.validation(`Missing required fields: ${missing.join(', ')}`, { missing });
   }
 };
 
 // 验证地址格式
 export const validateAddress = (address: string) => {
   if (!address || address.trim().length < 3) {
-    throw createError.validation('Address must be at least 3 characters long');
+    throw createAppError.validation('Address must be at least 3 characters long');
   }
   return address.trim();
 };
@@ -26,10 +26,10 @@ export const validateAddress = (address: string) => {
 // 验证坐标
 export const validateCoordinates = (lat?: number, lng?: number) => {
   if (lat !== undefined && (lat < -90 || lat > 90)) {
-    throw createError.validation('Latitude must be between -90 and 90');
+    throw createAppError.validation('Latitude must be between -90 and 90');
   }
   if (lng !== undefined && (lng < -180 || lng > 180)) {
-    throw createError.validation('Longitude must be between -180 and 180');
+    throw createAppError.validation('Longitude must be between -180 and 180');
   }
 };
 
@@ -62,7 +62,7 @@ export const validateOrderInput = (data: any): OrderInput => {
 export const validateId = (id: any): number => {
   const numId = Number(id);
   if (isNaN(numId) || numId <= 0) {
-    throw createError.validation('Invalid ID parameter');
+    throw createAppError.validation('Invalid ID parameter');
   }
   return numId;
 };

@@ -37,7 +37,7 @@ export const getValidatedBody = async <T = any>(
 /**
  * 获取查询参数
  */
-export const getValidatedQuery = <T = any>(
+export const getValidatedQueryParams = <T = any>(
   event: H3Event,
   validator?: (data: any) => T
 ): T => {

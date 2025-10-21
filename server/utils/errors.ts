@@ -25,7 +25,7 @@ export class AppError extends Error {
 }
 
 // 错误工厂函数
-export const createError = {
+export const createAppError = {
   validation: (message: string, details?: any) =>
     new AppError(ErrorCode.VALIDATION_ERROR, message, 400, details),
 

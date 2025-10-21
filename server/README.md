@@ -77,16 +77,16 @@ export default defineApiHandler(async (event) => {
 ### 错误处理
 
 ```typescript
-import { createError } from '../utils/errors';
+import { createAppError } from '../utils/errors';
 
 // 抛出验证错误
-throw createError.validation('Invalid input');
+throw createAppError.validation('Invalid input');
 
 // 抛出未找到错误
-throw createError.notFound('Resource');
+throw createAppError.notFound('Resource');
 
 // 抛出数据库错误
-throw createError.database('Database operation failed');
+throw createAppError.database('Database operation failed');
 ```
 
 ## 中间件

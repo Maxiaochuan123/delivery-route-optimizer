@@ -71,6 +71,8 @@
 interface Order {
   id: number;
   address: string;
+  lat?: number;
+  lng?: number;
   customerName: string;
   items: string;
   notes?: string;

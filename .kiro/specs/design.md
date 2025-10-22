@@ -46,8 +46,10 @@ graph TD
     A --> F[DeliveryList.vue 配送清单]
     A --> G[HistoryView.vue 历史记录]
 
-    C --> C1[OrderInput.vue 订单输入]
+    C --> C1[OrderForm.vue 订单表单组件 - 可复用]
     C --> C2[OrderList.vue 订单列表]
+    C --> C3[OrderDialog.vue 订单编辑对话框]
+    C3 --> C1
 
     D --> D1[MapContainer.vue 地图容器]
     D --> D2[LocationMarker.vue 位置标记]
@@ -59,6 +61,20 @@ graph TD
     F --> F1[DeliveryItem.vue 配送项]
     F --> F2[NavigationButton.vue 导航按钮]
 ```
+
+**组件设计说明：**
+
+1. **OrderForm.vue（订单表单组件）**
+   - 可复用的表单组件，支持添加和编辑两种模式
+   - 包含地址联想搜索功能
+   - 地址显示使用简短名称（POI name）而非完整地址
+   - 支持通过 props 传入初始值用于编辑模式
+   - 通过 emit 事件向父组件传递表单数据
+
+2. **地址显示策略**
+   - 列表显示：仅显示 POI 名称（如"宝印上院(东门)"）
+   - 详情显示：显示完整地址信息
+   - 地图标记：显示 POI 名称作为标签
 
 ### API 接口设计
 
@@ -143,6 +159,28 @@ POST /api/geocode
   lat: number;
   lng: number;
   formattedAddress: string;
+}
+
+// 地址搜索联想
+POST /api/geocode/search
+{
+  keyword: string;
+}
+
+// 响应
+{
+  success: boolean;
+  data: {
+    pois: Array<{
+      id: string;
+      name: string;        // 简短名称（如"宝印上院(东门)"）
+      fullAddress: string; // 完整地址
+      location: {
+        lat: number;
+        lng: number;
+      };
+    }>;
+  };
 }
 
 // 获取常用地址

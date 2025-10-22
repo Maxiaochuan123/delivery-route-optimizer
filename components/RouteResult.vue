@@ -46,16 +46,9 @@
       <!-- 配送顺序列表 -->
       <div class="text-subtitle-2 mb-3">配送顺序</div>
       <v-list>
-        <v-list-item
-          v-for="(point, index) in result.optimizedRoute"
-          :key="index"
-          class="border-b"
-        >
+        <v-list-item v-for="(point, index) in result.optimizedRoute" :key="index" class="border-b">
           <template #prepend>
-            <v-avatar
-              :color="point.orderId === null ? 'success' : 'primary'"
-              size="40"
-            >
+            <v-avatar :color="point.orderId === null ? 'success' : 'primary'" size="40">
               <span class="text-h6" v-if="point.orderId === null">起</span>
               <span class="text-h6" v-else>{{ index }}</span>
             </v-avatar>
@@ -77,7 +70,7 @@
 
           <v-list-item-subtitle v-if="point.distanceToNext > 0" class="mt-1 text-primary">
             <v-icon size="small" class="mr-1">mdi-arrow-down</v-icon>
-            {{ (point.distanceToNext / 1000).toFixed(2) }} km · 
+            {{ (point.distanceToNext / 1000).toFixed(2) }} km ·
             {{ Math.round(point.durationToNext / 60) }} 分钟
           </v-list-item-subtitle>
         </v-list-item>
@@ -86,12 +79,7 @@
       <!-- 操作按钮 -->
       <v-row class="mt-4">
         <v-col cols="12" md="6">
-          <v-btn
-            block
-            color="primary"
-            prepend-icon="mdi-map"
-            @click="$emit('view-on-map')"
-          >
+          <v-btn block color="primary" prepend-icon="mdi-map" @click="handleViewOnMap">
             在地图上查看
           </v-btn>
         </v-col>
@@ -100,7 +88,7 @@
             block
             variant="outlined"
             prepend-icon="mdi-navigation"
-            @click="$emit('start-delivery')"
+            @click="handleStartDelivery"
           >
             开始配送
           </v-btn>
@@ -149,8 +137,18 @@ defineProps<{
   result: RouteResult | null;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   'view-on-map': [];
   'start-delivery': [];
 }>();
+
+const handleViewOnMap = () => {
+  console.log('RouteResult: view-on-map clicked');
+  emit('view-on-map');
+};
+
+const handleStartDelivery = () => {
+  console.log('RouteResult: start-delivery clicked');
+  emit('start-delivery');
+};
 </script>

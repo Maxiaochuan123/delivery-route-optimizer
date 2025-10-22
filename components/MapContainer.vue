@@ -22,41 +22,50 @@ const emit = defineEmits<{
 
 const mapContainer = ref<HTMLDivElement>();
 const map = ref<any>(null);
+const nuxtApp = useNuxtApp();
 
-onMounted(() => {
-  // 确保在客户端环境且 AMap 已加载
-  if (process.client && window.AMap) {
+onMounted(async () => {
+  try {
+    // 等待 AMap 加载完成
+    if (nuxtApp.$waitForAMap) {
+      await (nuxtApp.$waitForAMap as () => Promise<void>)();
+    }
     initMap();
-  } else if (process.client) {
-    // 如果 AMap 还未加载，等待加载完成
-    const checkAMap = setInterval(() => {
-      if (window.AMap) {
-        clearInterval(checkAMap);
-        initMap();
-      }
-    }, 100);
+  } catch (error) {
+    console.error('Failed to load AMap:', error);
   }
 });
 
 const initMap = () => {
-  if (!mapContainer.value) return;
+  if (!mapContainer.value) {
+    console.error('Map container not found');
+    return;
+  }
 
-  map.value = new window.AMap.Map(mapContainer.value, {
-    center: props.center,
-    zoom: props.zoom,
-    viewMode: '2D',
-    resizeEnable: true,
-  });
+  console.log('Initializing AMap with center:', props.center, 'zoom:', props.zoom);
 
-  // 地图点击事件
-  map.value.on('click', (e: any) => {
-    emit('click', {
-      lng: e.lnglat.getLng(),
-      lat: e.lnglat.getLat(),
+  try {
+    map.value = new window.AMap.Map(mapContainer.value, {
+      center: props.center,
+      zoom: props.zoom,
+      viewMode: '2D',
+      resizeEnable: true,
     });
-  });
 
-  emit('mapReady', map.value);
+    console.log('AMap initialized successfully');
+
+    // 地图点击事件
+    map.value.on('click', (e: any) => {
+      emit('click', {
+        lng: e.lnglat.getLng(),
+        lat: e.lnglat.getLat(),
+      });
+    });
+
+    emit('mapReady', map.value);
+  } catch (error) {
+    console.error('Error initializing AMap:', error);
+  }
 };
 
 // 暴露地图实例给父组件

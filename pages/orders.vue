@@ -194,20 +194,15 @@ const snackbarColor = ref('success');
 
 // 路线优化相关
 const startLocationData = ref<{ address: string; lat: number; lng: number } | null>(null);
-const startLocation = ref<{ lat: number; lng: number; address: string } | null>(null);
 const routeResult = ref<any>(null);
 
-// 监听起始位置数据变化
-watch(startLocationData, (data) => {
-  if (data) {
-    startLocation.value = {
-      lat: data.lat,
-      lng: data.lng,
-      address: data.address,
-    };
-  } else {
-    startLocation.value = null;
-  }
+const startLocation = computed(() => {
+  if (!startLocationData.value) return null;
+  return {
+    lat: startLocationData.value.lat,
+    lng: startLocationData.value.lng,
+    address: startLocationData.value.address,
+  };
 });
 
 // 计算缺少坐标的订单
@@ -347,8 +342,6 @@ const confirmDelete = async () => {
 
 // 获取当前位置
 const getCurrentLocation = () => {
-  if (!process.client) return;
-
   gettingLocation.value = true;
 
   if (navigator.geolocation) {
@@ -504,8 +497,15 @@ const handleOptimize = async () => {
 
 // 在地图上查看
 const viewOnMap = () => {
-  // TODO: 导航到地图页面并显示路线
-  navigateTo('/map');
+  console.log('viewOnMap called', routeResult.value);
+  if (routeResult.value) {
+    const { setRouteData } = useRouteStore();
+    setRouteData(routeResult.value);
+    console.log('Navigating to map...');
+    navigateTo('/map');
+  } else {
+    showSnackbar('没有路线数据', 'error');
+  }
 };
 
 // 开始配送

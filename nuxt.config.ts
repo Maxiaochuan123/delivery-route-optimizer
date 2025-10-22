@@ -3,7 +3,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
-  modules: ['@nuxt/eslint', '@vite-pwa/nuxt'],
+  modules: ['@nuxt/eslint', '@vite-pwa/nuxt', '@vueuse/nuxt'],
 
   typescript: {
     strict: true,
@@ -25,7 +25,7 @@ export default defineNuxtConfig({
       script: [
         {
           src: `https://webapi.amap.com/maps?v=2.0&key=${process.env.AMAP_API_KEY}`,
-          defer: true,
+          async: true,
         },
       ],
     },

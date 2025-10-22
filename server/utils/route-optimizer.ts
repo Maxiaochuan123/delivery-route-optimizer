@@ -67,31 +67,50 @@ export class RouteOptimizer {
     const batchSize = 10;
 
     for (let i = 0; i < n; i++) {
+      const currentLocation = locations[i];
+      if (!currentLocation) continue;
+
       for (let j = i + 1; j < n; j += batchSize) {
         const batch = locations.slice(j, Math.min(j + batchSize, n));
 
         try {
-          const results = await calculateDistanceMatrix([locations[i]], batch);
+          const results = await calculateDistanceMatrix([currentLocation], batch);
 
           results.forEach((result: { distance: number; duration: number }, idx: number) => {
             const actualJ = j + idx;
-            this.distanceMatrix[i][actualJ] = result.distance;
-            this.distanceMatrix[actualJ][i] = result.distance;
-            this.durationMatrix[i][actualJ] = result.duration;
-            this.durationMatrix[actualJ][i] = result.duration;
+            const distMatrix = this.distanceMatrix[i];
+            const durationMatrix = this.durationMatrix[i];
+            const distMatrixJ = this.distanceMatrix[actualJ];
+            const durationMatrixJ = this.durationMatrix[actualJ];
+
+            if (distMatrix && durationMatrix && distMatrixJ && durationMatrixJ) {
+              distMatrix[actualJ] = result.distance;
+              distMatrixJ[i] = result.distance;
+              durationMatrix[actualJ] = result.duration;
+              durationMatrixJ[i] = result.duration;
+            }
           });
         } catch (error) {
           // 如果 API 调用失败，使用直线距离估算
           console.warn('Distance API failed, using straight-line distance');
           batch.forEach((dest, idx) => {
+            if (!dest) return;
+
             const actualJ = j + idx;
-            const dist = this.haversineDistance(locations[i], dest);
-            this.distanceMatrix[i][actualJ] = dist;
-            this.distanceMatrix[actualJ][i] = dist;
-            // 估算时间：假设平均速度 30km/h
-            const duration = Math.round((dist / 1000 / 30) * 3600);
-            this.durationMatrix[i][actualJ] = duration;
-            this.durationMatrix[actualJ][i] = duration;
+            const dist = this.haversineDistance(currentLocation, dest);
+            const distMatrix = this.distanceMatrix[i];
+            const durationMatrix = this.durationMatrix[i];
+            const distMatrixJ = this.distanceMatrix[actualJ];
+            const durationMatrixJ = this.durationMatrix[actualJ];
+
+            if (distMatrix && durationMatrix && distMatrixJ && durationMatrixJ) {
+              distMatrix[actualJ] = dist;
+              distMatrixJ[i] = dist;
+              // 估算时间：假设平均速度 30km/h
+              const duration = Math.round((dist / 1000 / 30) * 3600);
+              durationMatrix[actualJ] = duration;
+              durationMatrixJ[i] = duration;
+            }
           });
         }
       }
@@ -110,10 +129,17 @@ export class RouteOptimizer {
     for (let i = 1; i < n; i++) {
       let nearest = -1;
       let minDistance = Infinity;
+      const currentIdx = route[i - 1];
+
+      if (currentIdx === undefined) continue;
+
+      const currentRow = this.distanceMatrix[currentIdx];
+      if (!currentRow) continue;
 
       for (let j = 0; j < n; j++) {
-        if (!visited[j] && this.distanceMatrix[route[i - 1]][j] < minDistance) {
-          minDistance = this.distanceMatrix[route[i - 1]][j];
+        const distance = currentRow[j];
+        if (!visited[j] && distance !== undefined && distance < minDistance) {
+          minDistance = distance;
           nearest = j;
         }
       }
@@ -170,7 +196,11 @@ export class RouteOptimizer {
    * 2-opt 交换
    */
   private twoOptSwap(route: number[], i: number, j: number): number[] {
-    const newRoute = [...route.slice(0, i), ...route.slice(i, j + 1).reverse(), ...route.slice(j + 1)];
+    const newRoute = [
+      ...route.slice(0, i),
+      ...route.slice(i, j + 1).reverse(),
+      ...route.slice(j + 1),
+    ];
     return newRoute;
   }
 
@@ -180,7 +210,17 @@ export class RouteOptimizer {
   private calculateRouteDistance(route: number[]): number {
     let totalDistance = 0;
     for (let i = 0; i < route.length - 1; i++) {
-      totalDistance += this.distanceMatrix[route[i]][route[i + 1]];
+      const from = route[i];
+      const to = route[i + 1];
+      if (from !== undefined && to !== undefined) {
+        const row = this.distanceMatrix[from];
+        if (row) {
+          const distance = row[to];
+          if (distance !== undefined) {
+            totalDistance += distance;
+          }
+        }
+      }
     }
     return totalDistance;
   }
@@ -191,7 +231,17 @@ export class RouteOptimizer {
   private calculateRouteDuration(route: number[]): number {
     let totalDuration = 0;
     for (let i = 0; i < route.length - 1; i++) {
-      totalDuration += this.durationMatrix[route[i]][route[i + 1]];
+      const from = route[i];
+      const to = route[i + 1];
+      if (from !== undefined && to !== undefined) {
+        const row = this.durationMatrix[from];
+        if (row) {
+          const duration = row[to];
+          if (duration !== undefined) {
+            totalDuration += duration;
+          }
+        }
+      }
     }
     return totalDuration;
   }
@@ -200,13 +250,29 @@ export class RouteOptimizer {
    * 构建优化结果
    */
   private buildResult(locations: Location[], route: number[]): OptimizedRoute {
-    const sequence = route.map((idx) => locations[idx]);
+    const sequence: Location[] = route
+      .map((idx) => locations[idx])
+      .filter((loc): loc is Location => loc !== undefined);
+
     const distances: number[] = [];
     const durations: number[] = [];
 
     for (let i = 0; i < route.length - 1; i++) {
-      distances.push(this.distanceMatrix[route[i]][route[i + 1]]);
-      durations.push(this.durationMatrix[route[i]][route[i + 1]]);
+      const from = route[i];
+      const to = route[i + 1];
+
+      if (from !== undefined && to !== undefined) {
+        const distRow = this.distanceMatrix[from];
+        const durRow = this.durationMatrix[from];
+
+        if (distRow && durRow) {
+          const distance = distRow[to];
+          const duration = durRow[to];
+
+          distances.push(distance !== undefined ? distance : 0);
+          durations.push(duration !== undefined ? duration : 0);
+        }
+      }
     }
 
     return {

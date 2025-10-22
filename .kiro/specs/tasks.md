@@ -43,7 +43,9 @@
   - 添加算法选择策略，根据订单数量选择合适算法
   - _需求: 3.1, 3.2, 3.3, 3.4_
 
-- [-] 7. 路线优化 Server API 实现
+- [x] 7. 路线优化 Server API 实现
+
+
 
   - 创建 server/api/routes/optimize.post.ts 端点
   - 集成路径优化算法到 API 接口

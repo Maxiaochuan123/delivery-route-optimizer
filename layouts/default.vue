@@ -11,7 +11,7 @@
     </v-main>
 
     <!-- 底部导航栏 -->
-    <v-bottom-navigation v-model="activeTab" grow bg-color="white" elevation="8">
+    <v-bottom-navigation v-model="activeTab" grow bg-color="white" elevation="8" height="56">
       <v-btn value="home" to="/">
         <v-icon :color="activeTab === 'home' ? '#667eea' : '#9E9E9E'">mdi-home</v-icon>
         <span>首页</span>
@@ -47,3 +47,12 @@ const activeTab = computed(() => {
   return 'home';
 });
 </script>
+
+<style scoped>
+/* 确保底部导航栏宽度稳定 */
+:deep(.v-bottom-navigation) {
+  width: 100vw;
+  left: 0;
+  right: 0;
+}
+</style>

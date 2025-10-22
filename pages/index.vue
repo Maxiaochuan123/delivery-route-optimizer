@@ -14,7 +14,13 @@
         <v-card>
           <v-card-title>快速开始</v-card-title>
           <v-card-text>
-            <v-btn block color="primary" size="large" class="mb-3" prepend-icon="mdi-package-variant">
+            <v-btn
+              block
+              color="primary"
+              size="large"
+              class="mb-3"
+              prepend-icon="mdi-package-variant"
+            >
               添加订单
             </v-btn>
             <v-btn block variant="outlined" size="large" class="mb-3" prepend-icon="mdi-map-marker">
@@ -34,11 +40,36 @@
         <v-card>
           <v-card-title>功能特性</v-card-title>
           <v-list>
-            <v-list-item prepend-icon="mdi-check-circle" title="智能路线优化算法" />
-            <v-list-item prepend-icon="mdi-check-circle" title="实时地图显示" />
-            <v-list-item prepend-icon="mdi-check-circle" title="一键导航功能" />
-            <v-list-item prepend-icon="mdi-check-circle" title="配送历史记录" />
-            <v-list-item prepend-icon="mdi-check-circle" title="常用地址管理" />
+            <v-list-item>
+              <template #prepend>
+                <v-icon color="success">mdi-check-circle</v-icon>
+              </template>
+              <v-list-item-title>智能路线优化算法</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <template #prepend>
+                <v-icon color="success">mdi-check-circle</v-icon>
+              </template>
+              <v-list-item-title>实时地图显示</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <template #prepend>
+                <v-icon color="success">mdi-check-circle</v-icon>
+              </template>
+              <v-list-item-title>一键导航功能</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <template #prepend>
+                <v-icon color="success">mdi-check-circle</v-icon>
+              </template>
+              <v-list-item-title>配送历史记录</v-list-item-title>
+            </v-list-item>
+            <v-list-item>
+              <template #prepend>
+                <v-icon color="success">mdi-check-circle</v-icon>
+              </template>
+              <v-list-item-title>常用地址管理</v-list-item-title>
+            </v-list-item>
           </v-list>
         </v-card>
       </v-col>

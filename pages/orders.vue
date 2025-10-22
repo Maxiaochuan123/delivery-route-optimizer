@@ -44,48 +44,52 @@
                 <span>
                   有 {{ ordersWithoutCoords.length }} 个订单缺少坐标信息，需要先进行地理编码
                 </span>
-                <v-btn
-                  size="small"
-                  color="warning"
-                  :loading="geocoding"
-                  @click="geocodeAllOrders"
-                >
+                <v-btn size="small" color="warning" :loading="geocoding" @click="geocodeAllOrders">
                   批量地理编码
                 </v-btn>
               </div>
             </v-alert>
 
-            <v-form ref="optimizeFormRef">
-              <v-text-field
-                v-model="startAddress"
-                label="起始地址"
-                placeholder="请输入起始地址或点击获取当前位置"
-                prepend-inner-icon="mdi-map-marker"
-                variant="outlined"
-                class="mb-3"
-              />
-              <v-row>
-                <v-col cols="12" md="6">
-                  <v-btn
-                    block
-                    variant="outlined"
-                    prepend-icon="mdi-crosshairs-gps"
-                    :loading="gettingLocation"
-                    @click="getCurrentLocation"
-                  >
-                    获取当前位置
-                  </v-btn>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <OptimizeButton
-                    block
-                    :loading="optimizing"
-                    :disabled="!startAddress || orders.length === 0 || ordersWithoutCoords.length > 0"
-                    @click="handleOptimize"
-                  />
-                </v-col>
-              </v-row>
-            </v-form>
+            <AddressAutocomplete
+              v-model="startLocationData"
+              label="起始地址"
+              placeholder="请输入起始地址或点击获取当前位置"
+              class="mb-3"
+            />
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-btn
+                  block
+                  variant="outlined"
+                  prepend-icon="mdi-crosshairs-gps"
+                  :loading="gettingLocation"
+                  @click="getCurrentLocation"
+                >
+                  获取当前位置
+                </v-btn>
+              </v-col>
+              <v-col cols="12" md="6">
+                <OptimizeButton
+                  block
+                  :loading="optimizing"
+                  :disabled="
+                    !startLocationData || orders.length === 0 || ordersWithoutCoords.length > 0
+                  "
+                  @click="handleOptimize"
+                />
+              </v-col>
+            </v-row>
+
+            <!-- 当前位置显示 -->
+            <v-alert v-if="startLocation" type="success" variant="tonal" class="mt-3">
+              <div class="d-flex align-center">
+                <div>
+                  <div class="font-weight-medium">起始位置已设定</div>
+                  <div class="text-caption">{{ startLocation.address }}</div>
+                </div>
+              </div>
+            </v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -179,7 +183,6 @@ useHead({
 const orders = ref<Order[]>([]);
 const editDialog = ref(false);
 const deleteDialog = ref(false);
-const optimizeFormRef = ref();
 const saving = ref(false);
 const deleting = ref(false);
 const optimizing = ref(false);
@@ -190,9 +193,22 @@ const snackbarText = ref('');
 const snackbarColor = ref('success');
 
 // 路线优化相关
-const startAddress = ref('');
-const startLocation = ref<{ lat: number; lng: number } | null>(null);
+const startLocationData = ref<{ address: string; lat: number; lng: number } | null>(null);
+const startLocation = ref<{ lat: number; lng: number; address: string } | null>(null);
 const routeResult = ref<any>(null);
+
+// 监听起始位置数据变化
+watch(startLocationData, (data) => {
+  if (data) {
+    startLocation.value = {
+      lat: data.lat,
+      lng: data.lng,
+      address: data.address,
+    };
+  } else {
+    startLocation.value = null;
+  }
+});
 
 // 计算缺少坐标的订单
 const ordersWithoutCoords = computed(() => {
@@ -329,10 +345,63 @@ const confirmDelete = async () => {
   }
 };
 
+// 获取当前位置
+const getCurrentLocation = () => {
+  if (!process.client) return;
+
+  gettingLocation.value = true;
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lng = position.coords.longitude;
+        const lat = position.coords.latitude;
+
+        // 使用高德地图逆地理编码获取地址
+        try {
+          const response = await $fetch<{ success: boolean; data: any }>('/api/geocode/reverse', {
+            method: 'POST',
+            body: { lat, lng },
+          });
+
+          if (response.success && response.data.formattedAddress) {
+            const formattedAddress = response.data.formattedAddress;
+            startLocationData.value = {
+              address: formattedAddress,
+              lat,
+              lng,
+            };
+            showSnackbar('定位成功', 'success');
+          }
+        } catch (error) {
+          console.error('Reverse geocoding error:', error);
+          const coordsAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          startLocationData.value = {
+            address: coordsAddress,
+            lat,
+            lng,
+          };
+          showSnackbar('定位成功，但无法获取详细地址', 'warning');
+        }
+
+        gettingLocation.value = false;
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        showSnackbar('定位失败，请检查定位权限', 'error');
+        gettingLocation.value = false;
+      }
+    );
+  } else {
+    showSnackbar('浏览器不支持定位功能', 'error');
+    gettingLocation.value = false;
+  }
+};
+
 // 批量地理编码
 const geocodeAllOrders = async () => {
   const ordersToGeocode = ordersWithoutCoords.value;
-  
+
   if (ordersToGeocode.length === 0) {
     showSnackbar('所有订单都已有坐标信息');
     return;
@@ -389,64 +458,13 @@ const geocodeAllOrders = async () => {
   if (failCount === 0) {
     showSnackbar(`成功为 ${successCount} 个订单添加坐标`);
   } else {
-    showSnackbar(
-      `完成地理编码：成功 ${successCount} 个，失败 ${failCount} 个`,
-      'error'
-    );
-  }
-};
-
-// 获取当前位置
-const getCurrentLocation = () => {
-  if (!process.client) return;
-
-  gettingLocation.value = true;
-
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lng = position.coords.longitude;
-        const lat = position.coords.latitude;
-
-        startLocation.value = { lat, lng };
-
-        // 使用高德地图逆地理编码获取地址
-        try {
-          const response = await $fetch<{ success: boolean; data: any }>(
-            '/api/geocode/reverse',
-            {
-              method: 'POST',
-              body: { lat, lng },
-            }
-          );
-
-          if (response.success && response.data.formattedAddress) {
-            startAddress.value = response.data.formattedAddress;
-            showSnackbar('定位成功');
-          }
-        } catch (error) {
-          console.error('Reverse geocoding error:', error);
-          startAddress.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-          showSnackbar('定位成功，但无法获取详细地址', 'error');
-        }
-
-        gettingLocation.value = false;
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        showSnackbar('定位失败，请检查定位权限', 'error');
-        gettingLocation.value = false;
-      }
-    );
-  } else {
-    showSnackbar('浏览器不支持定位功能', 'error');
-    gettingLocation.value = false;
+    showSnackbar(`完成地理编码：成功 ${successCount} 个，失败 ${failCount} 个`, 'error');
   }
 };
 
 // 优化路线
 const handleOptimize = async () => {
-  if (!startAddress.value) {
+  if (!startLocation.value) {
     showSnackbar('请输入起始地址或获取当前位置', 'error');
     return;
   }
@@ -459,41 +477,18 @@ const handleOptimize = async () => {
   optimizing.value = true;
 
   try {
-    // 如果没有坐标，先进行地理编码
-    if (!startLocation.value) {
-      const geocodeResponse = await $fetch<{ success: boolean; data: any }>(
-        '/api/geocode',
-        {
-          method: 'POST',
-          body: { address: startAddress.value },
-        }
-      );
-
-      if (geocodeResponse.success && geocodeResponse.data) {
-        startLocation.value = {
-          lat: geocodeResponse.data.lat,
-          lng: geocodeResponse.data.lng,
-        };
-      } else {
-        throw new Error('无法解析起始地址');
-      }
-    }
-
     // 调用路线优化 API
-    const response = await $fetch<{ success: boolean; data: any }>(
-      '/api/routes/optimize-orders',
-      {
-        method: 'POST',
-        body: {
-          startLocation: {
-            lat: startLocation.value.lat,
-            lng: startLocation.value.lng,
-            address: startAddress.value,
-          },
-          orderIds: orders.value.map((o) => o.id),
+    const response = await $fetch<{ success: boolean; data: any }>('/api/routes/optimize-orders', {
+      method: 'POST',
+      body: {
+        startLocation: {
+          lat: startLocation.value.lat,
+          lng: startLocation.value.lng,
+          address: startLocation.value.address,
         },
-      }
-    );
+        orderIds: orders.value.map((o) => o.id),
+      },
+    });
 
     if (response.success) {
       routeResult.value = response.data;
@@ -520,7 +515,7 @@ const startDelivery = () => {
 };
 
 // 显示提示信息
-const showSnackbar = (text: string, color: 'success' | 'error' = 'success') => {
+const showSnackbar = (text: string, color: 'success' | 'error' | 'warning' = 'success') => {
   snackbarText.value = text;
   snackbarColor.value = color;
   snackbar.value = true;

@@ -1,29 +1,13 @@
 <template>
   <v-form ref="formRef" @submit.prevent="handleSubmit">
     <!-- 地址自动完成 -->
-    <v-autocomplete
-      v-model="selectedAddress"
-      v-model:search="addressSearch"
-      :items="addressSuggestions"
-      :loading="searchingAddress"
+    <AddressAutocomplete
+      v-model="addressData"
       label="配送地址"
       placeholder="请输入详细地址"
       :rules="[rules.required]"
-      prepend-inner-icon="mdi-map-marker"
-      variant="outlined"
       class="mb-3"
-      item-title="name"
-      item-value="id"
-      return-object
-      no-filter
-      clearable
-      @update:search="handleAddressSearch"
-    >
-      <template #item="{ props, item }">
-        <v-list-item v-bind="props" :title="item.raw.name" :subtitle="item.raw.fullAddress">
-        </v-list-item>
-      </template>
-    </v-autocomplete>
+    />
 
     <v-text-field
       v-model="form.customerName"
@@ -71,16 +55,6 @@
 </template>
 
 <script setup lang="ts">
-interface AddressSuggestion {
-  id: string;
-  name: string;
-  fullAddress: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-}
-
 interface OrderFormData {
   address: string;
   lat: number;
@@ -106,12 +80,7 @@ const emit = defineEmits<{
 }>();
 
 const formRef = ref();
-const searchingAddress = ref(false);
-const addressSearch = ref('');
-const selectedAddress = ref<AddressSuggestion | null>(null);
-const addressSuggestions = ref<AddressSuggestion[]>([]);
-
-let searchTimeout: NodeJS.Timeout | null = null;
+const addressData = ref<{ address: string; lat: number; lng: number } | null>(null);
 
 const form = reactive({
   customerName: '',
@@ -124,7 +93,7 @@ const rules = {
 };
 
 const isValid = computed(() => {
-  return !!selectedAddress.value && !!form.customerName && !!form.items;
+  return !!addressData.value && !!form.customerName && !!form.items;
 });
 
 // 初始化表单数据（编辑模式）
@@ -136,78 +105,28 @@ watch(
       form.items = data.items || '';
       form.notes = data.notes || '';
       
-      // 如果有地址信息，设置为选中的地址
+      // 如果有地址信息，设置地址数据
       if (data.address && data.lat && data.lng) {
-        selectedAddress.value = {
-          id: `${data.lat}-${data.lng}`,
-          name: data.address,
-          fullAddress: data.address,
-          location: {
-            lat: data.lat,
-            lng: data.lng,
-          },
+        addressData.value = {
+          address: data.address,
+          lat: data.lat,
+          lng: data.lng,
         };
-        addressSearch.value = data.address;
       }
     }
   },
   { immediate: true }
 );
 
-// 地址搜索防抖
-const handleAddressSearch = (query: string) => {
-  if (!query || query.length < 2) {
-    addressSuggestions.value = [];
-    return;
-  }
-
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
-  }
-
-  searchTimeout = setTimeout(async () => {
-    await searchAddress(query);
-  }, 300);
-};
-
-// 调用高德地图搜索 API
-const searchAddress = async (keyword: string) => {
-  searchingAddress.value = true;
-
-  try {
-    const response = await $fetch<{ success: boolean; data: any }>('/api/geocode/search', {
-      method: 'POST',
-      body: { keyword },
-    });
-
-    if (response.success && response.data.pois) {
-      addressSuggestions.value = response.data.pois.map((poi: any) => ({
-        id: poi.id,
-        name: poi.name,
-        fullAddress: poi.fullAddress,
-        location: {
-          lat: poi.location.lat,
-          lng: poi.location.lng,
-        },
-      }));
-    }
-  } catch (error) {
-    console.error('Address search error:', error);
-    addressSuggestions.value = [];
-  } finally {
-    searchingAddress.value = false;
-  }
-};
-
 const handleSubmit = async () => {
   const { valid } = await formRef.value.validate();
 
-  if (!valid || !selectedAddress.value) return;
+  if (!valid || !addressData.value) return;
 
   emit('submit', {
-    address: selectedAddress.value.name,
-    lat: selectedAddress.value.location.lat,
-    lng: selectedAddress.value.location.lng,
+    address: addressData.value.address,
+    lat: addressData.value.lat,
+    lng: addressData.value.lng,
     customerName: form.customerName,
     items: form.items,
     notes: form.notes || undefined,
@@ -215,8 +134,7 @@ const handleSubmit = async () => {
 
   // 如果是创建模式，重置表单
   if (props.mode === 'create') {
-    selectedAddress.value = null;
-    addressSearch.value = '';
+    addressData.value = null;
     form.customerName = '';
     form.items = '';
     form.notes = '';
@@ -227,8 +145,7 @@ const handleSubmit = async () => {
 // 暴露方法供父组件调用
 defineExpose({
   reset: () => {
-    selectedAddress.value = null;
-    addressSearch.value = '';
+    addressData.value = null;
     form.customerName = '';
     form.items = '';
     form.notes = '';

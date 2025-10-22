@@ -22,6 +22,18 @@ export default defineNuxtConfig({
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
       meta: [{ name: 'description', content: '个人商家配送路径优化工具' }],
+      script: [
+        {
+          src: `https://webapi.amap.com/maps?v=2.0&key=${process.env.AMAP_API_KEY}`,
+          defer: true,
+        },
+      ],
+    },
+  },
+
+  runtimeConfig: {
+    public: {
+      amapKey: process.env.AMAP_API_KEY,
     },
   },
 

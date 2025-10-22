@@ -2,7 +2,7 @@
 
 - [x] 1. Nuxt 全栈项目初始化
   - 创建 Nuxt 项目并配置 TypeScript
-  - 安装和配置 shadcn-vue 组件库
+  - 安装和配置 Vuetify 组件库
   - 配置 ESLint、Prettier 等代码规范工具
   - 设置项目目录结构（pages, components, server/api, utils 等）
   - _需求: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1_
@@ -44,9 +44,6 @@
   - _需求: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 7. 路线优化 Server API 实现
-
-
-
   - 创建 server/api/routes/optimize.post.ts 端点
   - 集成路径优化算法到 API 接口
   - 添加路线计算的异步处理和进度反馈
@@ -56,7 +53,7 @@
 
   - _需求: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 8. Nuxt 页面和布局结构
+- [x] 8. Nuxt 页面和布局结构
   - 创建应用主布局（layouts/default.vue）
   - 设置页面路由结构（pages/index.vue, pages/history.vue 等）
   - 配置 Nuxt 页面导航和路由守卫

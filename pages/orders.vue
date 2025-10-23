@@ -176,6 +176,11 @@ interface Order {
   createdAt: string;
 }
 
+definePageMeta({
+  name: 'orders',
+  keepalive: true,
+});
+
 useHead({
   title: '订单管理 - 配送路径优化系统',
 });
@@ -344,51 +349,71 @@ const confirmDelete = async () => {
 const getCurrentLocation = () => {
   gettingLocation.value = true;
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lng = position.coords.longitude;
-        const lat = position.coords.latitude;
+  if (!navigator.geolocation) {
+    showSnackbar('浏览器不支持定位功能', 'error');
+    gettingLocation.value = false;
+    return;
+  }
 
-        // 使用高德地图逆地理编码获取地址
-        try {
-          const response = await $fetch<{ success: boolean; data: any }>('/api/geocode/reverse', {
-            method: 'POST',
-            body: { lat, lng },
-          });
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lng = position.coords.longitude;
+      const lat = position.coords.latitude;
 
-          if (response.success && response.data.formattedAddress) {
-            const formattedAddress = response.data.formattedAddress;
-            startLocationData.value = {
-              address: formattedAddress,
-              lat,
-              lng,
-            };
-            showSnackbar('定位成功', 'success');
-          }
-        } catch (error) {
-          console.error('Reverse geocoding error:', error);
-          const coordsAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      // 使用高德地图逆地理编码获取地址
+      try {
+        const response = await $fetch<{ success: boolean; data: any }>('/api/geocode/reverse', {
+          method: 'POST',
+          body: { lat, lng },
+        });
+
+        if (response.success && response.data.formattedAddress) {
+          const formattedAddress = response.data.formattedAddress;
           startLocationData.value = {
-            address: coordsAddress,
+            address: formattedAddress,
             lat,
             lng,
           };
-          showSnackbar('定位成功，但无法获取详细地址', 'warning');
+          showSnackbar('定位成功', 'success');
         }
-
-        gettingLocation.value = false;
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        showSnackbar('定位失败，请检查定位权限', 'error');
-        gettingLocation.value = false;
+      } catch (error) {
+        console.error('Reverse geocoding error:', error);
+        const coordsAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        startLocationData.value = {
+          address: coordsAddress,
+          lat,
+          lng,
+        };
+        showSnackbar('定位成功，但无法获取详细地址', 'warning');
       }
-    );
-  } else {
-    showSnackbar('浏览器不支持定位功能', 'error');
-    gettingLocation.value = false;
-  }
+
+      gettingLocation.value = false;
+    },
+    (error) => {
+      console.error('Geolocation error:', error);
+      let errorMessage = '定位失败';
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = '定位权限被拒绝。请在浏览器设置中允许定位权限，或手动输入地址';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = '无法获取位置信息，请手动输入地址';
+          break;
+        case error.TIMEOUT:
+          errorMessage = '定位超时，请重试或手动输入地址';
+          break;
+      }
+
+      showSnackbar(errorMessage, 'error');
+      gettingLocation.value = false;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
 };
 
 // 批量地理编码
@@ -510,8 +535,13 @@ const viewOnMap = () => {
 
 // 开始配送
 const startDelivery = () => {
-  // TODO: 创建配送会话并导航到配送页面
-  showSnackbar('配送功能即将推出');
+  if (routeResult.value) {
+    const { setRouteData } = useRouteStore();
+    setRouteData(routeResult.value);
+    navigateTo('/delivery');
+  } else {
+    showSnackbar('没有路线数据', 'error');
+  }
 };
 
 // 显示提示信息

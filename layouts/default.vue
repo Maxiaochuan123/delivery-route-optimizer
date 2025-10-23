@@ -1,10 +1,5 @@
 <template>
   <v-app>
-    <!-- 顶部应用栏 -->
-    <v-app-bar color="primary" prominent>
-      <v-app-bar-title>配送路径优化</v-app-bar-title>
-    </v-app-bar>
-
     <!-- 主内容区 -->
     <v-main>
       <slot />
@@ -42,6 +37,7 @@ const activeTab = computed(() => {
   const path = route.path;
   if (path === '/') return 'home';
   if (path.startsWith('/orders')) return 'orders';
+  if (path.startsWith('/delivery')) return 'orders'; // 配送页面属于订单流程
   if (path.startsWith('/map')) return 'map';
   if (path.startsWith('/history')) return 'history';
   return 'home';

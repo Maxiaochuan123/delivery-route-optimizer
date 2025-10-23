@@ -1,12 +1,17 @@
 <template>
-  <v-container>
-    <!-- 页面标题 -->
-    <v-row class="text-center mb-4">
-      <v-col cols="12">
-        <h2 class="text-h5 font-weight-bold">配送历史记录</h2>
-        <p class="text-body-2 text-medium-emphasis">查看过往配送记录和统计信息</p>
-      </v-col>
-    </v-row>
+  <div>
+    <!-- 顶部应用栏 -->
+    <v-app-bar color="primary" density="compact">
+      <v-btn icon="mdi-arrow-left" @click="goBack" />
+      <v-app-bar-title>配送历史记录</v-app-bar-title>
+    </v-app-bar>
+
+    <v-container class="mt-4">
+      <v-row class="mb-2">
+        <v-col cols="12">
+          <p class="text-body-2 text-medium-emphasis text-center">查看过往配送记录和统计信息</p>
+        </v-col>
+      </v-row>
 
     <!-- 统计卡片 -->
     <v-row>
@@ -61,10 +66,16 @@
         </v-card>
       </v-col>
     </v-row>
-  </v-container>
+    </v-container>
+  </div>
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  name: 'history',
+  keepalive: true,
+});
+
 useHead({
   title: '历史记录 - 配送路径优化系统',
 });
@@ -76,4 +87,9 @@ const filterOptions = [
   { title: '本周', value: 'week' },
   { title: '本月', value: 'month' },
 ];
+
+// 返回首页
+const goBack = () => {
+  navigateTo('/');
+};
 </script>

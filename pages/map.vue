@@ -166,6 +166,11 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  name: 'map',
+  keepalive: true,
+});
+
 useHead({
   title: '地图视图 - 配送路径优化系统',
 });
@@ -264,32 +269,52 @@ const handleMapClick = (lnglat: { lng: number; lat: number }) => {
 const getCurrentLocation = () => {
   locating.value = true;
 
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lng = position.coords.longitude;
-        const lat = position.coords.latitude;
-
-        mapCenter.value = [lng, lat];
-
-        if (mapInstance.value) {
-          mapInstance.value.setCenter([lng, lat]);
-          mapInstance.value.setZoom(15);
-        }
-
-        showSnackbar('定位成功');
-        locating.value = false;
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        showSnackbar('定位失败，请检查定位权限', 'error');
-        locating.value = false;
-      }
-    );
-  } else {
+  if (!navigator.geolocation) {
     showSnackbar('浏览器不支持定位功能', 'error');
     locating.value = false;
+    return;
   }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lng = position.coords.longitude;
+      const lat = position.coords.latitude;
+
+      mapCenter.value = [lng, lat];
+
+      if (mapInstance.value) {
+        mapInstance.value.setCenter([lng, lat]);
+        mapInstance.value.setZoom(15);
+      }
+
+      showSnackbar('定位成功');
+      locating.value = false;
+    },
+    (error) => {
+      console.error('Geolocation error:', error);
+      let errorMessage = '定位失败';
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = '定位权限被拒绝。请在浏览器设置中允许定位权限';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = '无法获取位置信息，请稍后重试';
+          break;
+        case error.TIMEOUT:
+          errorMessage = '定位超时，请重试';
+          break;
+      }
+
+      showSnackbar(errorMessage, 'error');
+      locating.value = false;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
 };
 
 const removeMarkerAt = (index: number) => {

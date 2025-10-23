@@ -1,6 +1,6 @@
 <template>
   <NuxtLayout>
-    <NuxtPage />
+    <NuxtPage :keepalive="{ include: ['orders', 'map', 'delivery', 'history'] }" />
   </NuxtLayout>
 </template>
 

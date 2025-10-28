@@ -6,9 +6,11 @@ import { createAppError } from '../../utils/errors';
 const { deliverySessions } = schema;
 
 interface UpdateSessionRequest {
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   completedAt?: string;
   totalDistance?: number;
   totalDuration?: number;
+  orderCount?: number;
 }
 
 /**
@@ -27,8 +29,20 @@ export default defineApiHandler(async (event) => {
   try {
     const updateData: any = {};
 
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+      // 如果状态变为 completed 或 cancelled，自动设置 completedAt
+      if ((body.status === 'completed' || body.status === 'cancelled') && !body.completedAt) {
+        updateData.completedAt = new Date().toISOString();
+      }
+    }
+
     if (body.completedAt !== undefined) {
-      updateData.completedAt = body.completedAt || sql`CURRENT_TIMESTAMP`;
+      updateData.completedAt = body.completedAt || new Date().toISOString();
+      // 如果设置了 completedAt，自动将状态设为 completed
+      if (!body.status) {
+        updateData.status = 'completed';
+      }
     }
 
     if (body.totalDistance !== undefined) {
@@ -37,6 +51,10 @@ export default defineApiHandler(async (event) => {
 
     if (body.totalDuration !== undefined) {
       updateData.totalDuration = body.totalDuration;
+    }
+
+    if (body.orderCount !== undefined) {
+      updateData.orderCount = body.orderCount;
     }
 
     const [session] = await db

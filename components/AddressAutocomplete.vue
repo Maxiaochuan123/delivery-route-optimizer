@@ -1,5 +1,6 @@
 <template>
   <v-autocomplete
+    ref="autocompleteRef"
     v-model="selectedAddress"
     v-model:search="addressSearch"
     :items="addressSuggestions"
@@ -14,7 +15,6 @@
     return-object
     no-filter
     clearable
-    @update:search="handleAddressSearch"
     @update:model-value="handleAddressSelect"
   >
     <template #item="{ props, item }">
@@ -58,12 +58,14 @@ const emit = defineEmits<{
   'update:modelValue': [value: AddressData | null];
 }>();
 
+const autocompleteRef = ref();
 const searchingAddress = ref(false);
 const addressSearch = ref('');
 const selectedAddress = ref<AddressSuggestion | null>(null);
 const addressSuggestions = ref<AddressSuggestion[]>([]);
 
 let searchTimeout: NodeJS.Timeout | null = null;
+let isComposing = ref(false); // 标记是否正在输入法组合中
 
 // 监听外部传入的值
 watch(
@@ -88,9 +90,34 @@ watch(
   { immediate: true }
 );
 
+// 监听搜索输入变化
+watch(addressSearch, (query) => {
+  // 如果正在输入法组合中，不触发搜索
+  if (isComposing.value) {
+    return;
+  }
+
+  // 使用 nextTick 确保在 compositionend 事件处理完成后再触发搜索
+  nextTick(() => {
+    if (!isComposing.value) {
+      handleAddressSearch(query);
+    }
+  });
+});
+
 // 地址搜索防抖
 const handleAddressSearch = (query: string) => {
-  if (!query || query.length < 2) {
+  // 如果查询为空，清空建议列表
+  if (!query || query.trim().length === 0) {
+    addressSuggestions.value = [];
+    return;
+  }
+
+  // 检查是否包含中文字符
+  const hasChinese = /[\u4e00-\u9fa5]/.test(query);
+
+  // 如果是纯英文/数字，要求至少2个字符；如果包含中文，1个字符即可
+  if (!hasChinese && query.length < 2) {
     addressSuggestions.value = [];
     return;
   }
@@ -101,7 +128,7 @@ const handleAddressSearch = (query: string) => {
 
   searchTimeout = setTimeout(async () => {
     await searchAddress(query);
-  }, 300);
+  }, 500); // 增加防抖时间到500ms
 };
 
 // 调用高德地图搜索 API
@@ -145,6 +172,28 @@ const handleAddressSelect = (selected: AddressSuggestion | null) => {
     emit('update:modelValue', null);
   }
 };
+
+// 在组件挂载后添加输入法事件监听
+onMounted(() => {
+  nextTick(() => {
+    const inputElement = autocompleteRef.value?.$el?.querySelector('input');
+    if (inputElement) {
+      // 监听输入法开始组合
+      inputElement.addEventListener('compositionstart', () => {
+        isComposing.value = true;
+      });
+
+      // 监听输入法结束组合
+      inputElement.addEventListener('compositionend', () => {
+        isComposing.value = false;
+        // 输入法结束后，手动触发一次搜索
+        nextTick(() => {
+          handleAddressSearch(addressSearch.value);
+        });
+      });
+    }
+  });
+});
 
 // 暴露方法供父组件调用
 defineExpose({

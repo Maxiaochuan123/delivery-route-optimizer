@@ -1,10 +1,21 @@
 <template>
   <v-container>
-    <!-- 页面标题 -->
+    <!-- 页面标题和返回按钮 -->
     <v-row class="text-center mb-4">
       <v-col cols="12">
-        <h2 class="text-h5 font-weight-bold">地图视图</h2>
-        <p class="text-body-2 text-medium-emphasis">查看配送路线和订单位置</p>
+        <div class="d-flex align-center justify-center position-relative">
+          <v-btn
+            icon="mdi-arrow-left"
+            variant="text"
+            class="position-absolute"
+            style="left: 0"
+            @click="$router.back()"
+          />
+          <div>
+            <h2 class="text-h5 font-weight-bold">地图视图</h2>
+            <p class="text-body-2 text-medium-emphasis">查看配送路线和订单位置</p>
+          </div>
+        </div>
       </v-col>
     </v-row>
 
@@ -168,7 +179,6 @@
 <script setup lang="ts">
 definePageMeta({
   name: 'map',
-  keepalive: true,
 });
 
 useHead({

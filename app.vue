@@ -1,6 +1,7 @@
 <template>
   <NuxtLayout>
-    <NuxtPage :keepalive="{ include: ['orders', 'map', 'delivery', 'history'] }" />
+    <!-- <NuxtPage :keepalive="{ include: ['orders', 'map', 'delivery', 'history'] }" /> -->
+    <NuxtPage />
   </NuxtLayout>
 </template>
 
@@ -23,8 +24,8 @@ useHead({
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.6;
   color: #333;
   background: #f8f9fa;
@@ -49,4 +50,3 @@ body {
   background: #555;
 }
 </style>
-

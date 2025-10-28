@@ -78,19 +78,20 @@
 
       <!-- 操作按钮 -->
       <v-row class="mt-4">
-        <v-col cols="12" md="6">
-          <v-btn block color="primary" prepend-icon="mdi-map" @click="handleViewOnMap">
-            在地图上查看
-          </v-btn>
-        </v-col>
-        <v-col cols="12" md="6">
+        <v-col cols="12">
           <v-btn
             block
-            variant="outlined"
+            color="primary"
+            size="large"
             prepend-icon="mdi-navigation"
             @click="handleStartDelivery"
           >
             开始配送
+          </v-btn>
+        </v-col>
+        <v-col cols="12">
+          <v-btn block variant="outlined" prepend-icon="mdi-map" @click="handleViewOnMap">
+            在地图上查看
           </v-btn>
         </v-col>
       </v-row>

@@ -10,7 +10,8 @@ export const orders = sqliteTable('orders', {
   customerName: text('customer_name'),
   items: text('items'),
   notes: text('notes'),
-  status: text('status').default('pending').notNull(), // pending, completed
+  status: text('status').default('pending').notNull(), // pending, completed, cancelled
+  cancelReason: text('cancel_reason'), // 取消原因
   createdAt: text('created_at')
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -26,6 +27,8 @@ export const deliverySessions = sqliteTable('delivery_sessions', {
   totalDistance: integer('total_distance'), // 米
   totalDuration: integer('total_duration'), // 秒
   orderCount: integer('order_count'),
+  status: text('status').default('pending').notNull(), // pending, in_progress, completed, cancelled
+  cancelReason: text('cancel_reason'), // 取消原因
   createdAt: text('created_at')
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
@@ -44,6 +47,21 @@ export const deliveryRoutes = sqliteTable('delivery_routes', {
   sequence: integer('sequence').notNull(),
   distanceToNext: integer('distance_to_next'),
   durationToNext: integer('duration_to_next'),
+});
+
+// 会话订单关联表（保存会话和订单的关联关系）
+export const sessionOrders = sqliteTable('session_orders', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  sessionId: integer('session_id')
+    .notNull()
+    .references(() => deliverySessions.id),
+  orderId: integer('order_id')
+    .notNull()
+    .references(() => orders.id),
+  cancelReason: text('cancel_reason'), // 该订单在此会话中的取消原因
+  createdAt: text('created_at')
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 // 常用地址表

@@ -4,6 +4,9 @@
       <span>订单列表</span>
       <v-chip v-if="orders.length > 0" color="primary" size="small">
         {{ orders.length }} 个订单
+        <span v-if="selectable && selectedOrders.length > 0">
+          (已选 {{ selectedOrders.length }})
+        </span>
       </v-chip>
     </v-card-title>
 
@@ -20,6 +23,14 @@
         class="border-b"
       >
         <template #prepend>
+          <v-checkbox
+            v-if="selectable"
+            :model-value="selectedOrders.includes(order.id)"
+            @update:model-value="toggleSelection(order.id)"
+            hide-details
+            density="compact"
+            class="mr-2"
+          />
           <v-avatar :color="getStatusColor(order.status)" size="40">
             <span class="text-h6">{{ index + 1 }}</span>
           </v-avatar>
@@ -45,7 +56,7 @@
         </v-list-item-subtitle>
 
         <template #append>
-          <div class="d-flex flex-column ga-2">
+          <div v-if="!props.readonly" class="d-flex flex-column ga-2">
             <v-btn
               icon="mdi-pencil"
               size="small"
@@ -80,16 +91,40 @@ interface Order {
   createdAt: string;
 }
 
-defineProps<{
+const props = defineProps<{
   orders: Order[];
+  readonly?: boolean;
+  selectable?: boolean;
+  selectedOrders?: number[];
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   edit: [order: Order];
   delete: [id: number];
+  'update:selectedOrders': [ids: number[]];
 }>();
 
 const getStatusColor = (status: string) => {
   return status === 'completed' ? 'success' : 'primary';
+};
+
+const selectedOrders = computed(() => props.selectedOrders || []);
+
+const toggleSelection = (orderId: number) => {
+  if (!props.selectable) return;
+  
+  const currentSelection = selectedOrders.value;
+  const index = currentSelection.indexOf(orderId);
+  
+  let newSelection: number[];
+  if (index > -1) {
+    // 取消选中
+    newSelection = currentSelection.filter(id => id !== orderId);
+  } else {
+    // 选中
+    newSelection = [...currentSelection, orderId];
+  }
+  
+  emit('update:selectedOrders', newSelection);
 };
 </script>

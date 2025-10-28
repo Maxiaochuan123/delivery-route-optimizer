@@ -6,7 +6,8 @@ export interface Order {
   customerName: string;
   items: string;
   notes?: string;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'completed' | 'cancelled';
+  cancelReason?: string | null;
   createdAt: Date;
   completedAt?: Date;
 }
@@ -35,8 +36,13 @@ export interface DeliverySession {
   startLocation: Location;
   orders: Order[];
   route?: OptimizedRoute;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  cancelReason?: string | null;
   createdAt: Date;
   completedAt?: Date;
+  totalDistance?: number;
+  totalDuration?: number;
+  orderCount?: number;
 }
 
 export interface FrequentAddress {
@@ -47,4 +53,35 @@ export interface FrequentAddress {
   lng?: number;
   usageCount: number;
   lastUsed: Date;
+}
+
+// API Request/Response Types
+
+export interface CancelOrderRequest {
+  orderId: number;
+  cancelReason?: string | null;
+  isLastOrder?: boolean;
+}
+
+export interface CancelOrderResponse {
+  success: boolean;
+  message: string;
+  data: {
+    remainingOrders: number;
+    sessionCancelled: boolean;
+  };
+}
+
+export interface AbandonSessionRequest {
+  cancelReason?: string | null;
+}
+
+export interface AbandonSessionResponse {
+  success: boolean;
+  message: string;
+  data: {
+    restoredOrders: number;
+    sessionId: number;
+    cancelReason: string | null;
+  };
 }

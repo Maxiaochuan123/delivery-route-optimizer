@@ -2,7 +2,7 @@ import { defineApiHandler, getValidatedBody } from '../../utils/handler';
 import { db, schema } from '../../database/db';
 import { createAppError } from '../../utils/errors';
 
-const { deliverySessions, deliveryRoutes } = schema;
+const { deliverySessions, deliveryRoutes, sessionOrders } = schema;
 
 interface CreateSessionRequest {
   startLocation: string;
@@ -63,6 +63,16 @@ export default defineApiHandler(async (event) => {
           sequence: route.sequence,
           distanceToNext: route.distanceToNext,
           durationToNext: route.durationToNext,
+        }))
+      );
+    }
+
+    // 保存会话和订单的关联关系（用于历史查询）
+    if (body.orderIds.length > 0) {
+      await db.insert(sessionOrders).values(
+        body.orderIds.map((orderId) => ({
+          sessionId: session.id,
+          orderId: orderId,
         }))
       );
     }

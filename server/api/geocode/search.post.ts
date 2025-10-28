@@ -16,8 +16,8 @@ export default defineApiHandler(async (event) => {
       throw createAppError.validation('Keyword is required');
     }
 
-    if (data.keyword.length < 2) {
-      throw createAppError.validation('Keyword must be at least 2 characters');
+    if (data.keyword.length < 1) {
+      throw createAppError.validation('Keyword must be at least 1 character');
     }
 
     return data;

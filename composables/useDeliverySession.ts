@@ -6,6 +6,7 @@ interface DeliverySessionData {
   totalDistance: number;
   totalDuration: number;
   orderCount: number;
+  status: 'pending' | 'in_progress' | 'completed';
   createdAt: string;
   completedAt: string | null;
   completedOrders: number[];
@@ -63,16 +64,16 @@ export const useDeliverySession = () => {
         method: 'POST',
         body: data,
       });
-
       // 保存会话数据到本地
       sessionData.value = {
-        sessionId: response.sessionId,
+        sessionId: response.data.sessionId,
         startLocation: data.startLocation,
         startLat: data.startLat,
         startLng: data.startLng,
         totalDistance: data.totalDistance,
         totalDuration: data.totalDuration,
         orderCount: data.orderIds.length,
+        status: 'pending',
         createdAt: new Date().toISOString(),
         completedAt: null,
         completedOrders: [],
@@ -89,10 +90,14 @@ export const useDeliverySession = () => {
    * 标记订单完成
    */
   const markOrderComplete = (orderId: number) => {
-    if (!sessionData.value) return;
+    const currentSession = sessionData.value;
+    if (!currentSession) return;
 
-    if (!sessionData.value.completedOrders.includes(orderId)) {
-      sessionData.value.completedOrders.push(orderId);
+    if (!currentSession.completedOrders.includes(orderId)) {
+      sessionData.value = {
+        ...currentSession,
+        completedOrders: [...currentSession.completedOrders, orderId],
+      };
     }
   };
 
@@ -100,32 +105,38 @@ export const useDeliverySession = () => {
    * 完成配送会话
    */
   const completeSession = async () => {
-    if (!sessionData.value || !sessionData.value.sessionId) {
+    const currentSession = sessionData.value;
+    
+    if (!currentSession || !currentSession.sessionId) {
       console.warn('No active session to complete');
       return null;
     }
 
     // 如果已经完成，直接返回
-    if (sessionData.value.completedAt) {
+    if (currentSession.completedAt) {
       console.warn('Session already completed');
       return null;
     }
 
     try {
+      const completedAtTime = new Date().toISOString();
+      
+      // 完成会话并更新订单状态
       const response = await $fetch(
-        `/api/delivery-sessions/${sessionData.value.sessionId}`,
+        `/api/delivery-sessions/${currentSession.sessionId}/complete`,
         {
-          method: 'PATCH',
+          method: 'POST',
           body: {
-            completedAt: new Date().toISOString(),
+            completedAt: completedAtTime,
           },
         }
       );
-
-      // 更新本地数据
-      if (sessionData.value) {
-        sessionData.value.completedAt = new Date().toISOString();
-      }
+      // 更新本地数据 - 创建新对象而不是修改只读的computed值
+      sessionData.value = {
+        ...currentSession,
+        status: 'completed',
+        completedAt: completedAtTime,
+      };
 
       return response;
     } catch (error) {
@@ -144,6 +155,26 @@ export const useDeliverySession = () => {
     } catch (error) {
       console.error('Failed to get session details:', error);
       throw error;
+    }
+  };
+
+  /**
+   * 更新会话数据
+   */
+  const updateSession = (updates: Partial<DeliverySessionData>) => {
+    if (sessionData.value) {
+      // 创建新对象以确保触发响应式更新
+      const newData = {
+        ...sessionData.value,
+        ...updates,
+      };
+      sessionData.value = newData;
+      
+      // 强制触发 localStorage 写入
+      console.log('✅ Session updated:', {
+        orderCount: newData.orderCount,
+        completedOrders: newData.completedOrders.length,
+      });
     }
   };
 
@@ -171,7 +202,7 @@ export const useDeliverySession = () => {
   });
 
   return {
-    sessionData: computed(() => sessionData.value),
+    sessionData,
     isSessionActive,
     completionProgress,
     getSessionSummary,
@@ -179,6 +210,7 @@ export const useDeliverySession = () => {
     markOrderComplete,
     completeSession,
     getSessionDetails,
+    updateSession,
     clearSession,
   };
 };

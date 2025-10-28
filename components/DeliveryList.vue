@@ -25,6 +25,7 @@
           :item="item"
           @complete="handleComplete(index)"
           @navigate="handleNavigate(item)"
+          @cancel="handleCancel(index)"
         />
       </div>
 
@@ -82,6 +83,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   complete: [index: number];
   navigate: [item: DeliveryItem];
+  cancel: [index: number];
 }>();
 
 // 添加 completed 属性到每个项
@@ -119,5 +121,9 @@ const handleComplete = (index: number) => {
 
 const handleNavigate = (item: DeliveryItem) => {
   emit('navigate', item);
+};
+
+const handleCancel = (index: number) => {
+  emit('cancel', index);
 };
 </script>

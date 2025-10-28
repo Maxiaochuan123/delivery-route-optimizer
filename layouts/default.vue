@@ -17,11 +17,6 @@
         <span>订单</span>
       </v-btn>
 
-      <v-btn value="map" to="/map">
-        <v-icon :color="activeTab === 'map' ? '#4ECDC4' : '#9E9E9E'">mdi-map</v-icon>
-        <span>地图</span>
-      </v-btn>
-
       <v-btn value="history" to="/history">
         <v-icon :color="activeTab === 'history' ? '#FFD93D' : '#9E9E9E'">mdi-chart-line</v-icon>
         <span>历史</span>
@@ -38,7 +33,7 @@ const activeTab = computed(() => {
   if (path === '/') return 'home';
   if (path.startsWith('/orders')) return 'orders';
   if (path.startsWith('/delivery')) return 'orders'; // 配送页面属于订单流程
-  if (path.startsWith('/map')) return 'map';
+  if (path.startsWith('/map')) return 'orders'; // 地图页面属于订单流程
   if (path.startsWith('/history')) return 'history';
   return 'home';
 });

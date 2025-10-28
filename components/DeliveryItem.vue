@@ -35,20 +35,32 @@
 
         <!-- 操作按钮 -->
         <v-col cols="auto">
-          <v-btn
-            v-if="!item.completed && item.orderId !== null"
-            icon="mdi-check"
-            color="success"
-            variant="text"
-            @click="handleComplete"
-          />
-          <v-btn
-            v-if="item.orderId !== null"
-            icon="mdi-navigation"
-            color="primary"
-            variant="text"
-            @click="handleNavigate"
-          />
+          <div class="d-flex flex-column ga-1">
+            <v-btn
+              v-if="!item.completed && item.orderId !== null"
+              icon="mdi-check"
+              color="success"
+              variant="text"
+              size="small"
+              @click="handleComplete"
+            />
+            <v-btn
+              v-if="item.orderId !== null"
+              icon="mdi-navigation"
+              color="primary"
+              variant="text"
+              size="small"
+              @click="handleNavigate"
+            />
+            <v-btn
+              v-if="!item.completed && item.orderId !== null"
+              icon="mdi-close"
+              color="error"
+              variant="text"
+              size="small"
+              @click="handleCancel"
+            />
+          </div>
         </v-col>
       </v-row>
     </v-card-text>
@@ -79,6 +91,7 @@ defineProps<Props>();
 const emit = defineEmits<{
   complete: [];
   navigate: [];
+  cancel: [];
 }>();
 
 const handleComplete = () => {
@@ -87,5 +100,9 @@ const handleComplete = () => {
 
 const handleNavigate = () => {
   emit('navigate');
+};
+
+const handleCancel = () => {
+  emit('cancel');
 };
 </script>

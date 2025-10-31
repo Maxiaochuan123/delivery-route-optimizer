@@ -10,6 +10,8 @@ export const orders = sqliteTable('orders', {
   customerName: text('customer_name'),
   items: text('items'),
   notes: text('notes'),
+  contactType: text('contact_type'), // 'phone' | 'wechat'
+  contactValue: text('contact_value'), // 电话号码或微信号
   status: text('status').default('pending').notNull(), // pending, completed, cancelled
   cancelReason: text('cancel_reason'), // 取消原因
   createdAt: text('created_at')
@@ -64,13 +66,16 @@ export const sessionOrders = sqliteTable('session_orders', {
     .notNull(),
 });
 
-// 常用地址表
+// 常用客户表（原常用地址表，现在包含客户信息）
 export const frequentAddresses = sqliteTable('frequent_addresses', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  customerName: text('customer_name').notNull(), // 客户姓名
   address: text('address').notNull(),
-  alias: text('alias'),
+  alias: text('alias'), // 客户别名（可选，如"老张"、"李总"）
   lat: real('lat'),
   lng: real('lng'),
+  contactType: text('contact_type'), // 'phone' | 'wechat'
+  contactValue: text('contact_value'), // 电话号码或微信号
   usageCount: integer('usage_count').default(1).notNull(),
   lastUsed: text('last_used')
     .default(sql`CURRENT_TIMESTAMP`)

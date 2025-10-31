@@ -1,5 +1,4 @@
-import { defineApiHandler, getValidatedParams } from '../../../utils/handler';
-import { validateId } from '../../../utils/validation';
+import { defineApiHandler } from '../../../utils/handler';
 import { db, schema } from '../../../database/db';
 import { eq } from 'drizzle-orm';
 import { createAppError } from '../../../utils/errors';
@@ -9,25 +8,32 @@ import { createAppError } from '../../../utils/errors';
  * DELETE /api/addresses/frequent/:id
  */
 export default defineApiHandler(async (event) => {
-  const { id } = getValidatedParams(event, (params) => ({
-    id: validateId(params.id),
-  }));
+  const id = parseInt(event.context.params?.id || '0');
 
-  // 检查地址是否存在
-  const existing = await db
-    .select()
-    .from(schema.frequentAddresses)
-    .where(eq(schema.frequentAddresses.id, id));
-
-  if (existing.length === 0) {
-    throw createAppError.notFound('Frequent address');
+  if (!id || isNaN(id)) {
+    throw createAppError.validation('Invalid address ID');
   }
 
   try {
+    // 检查地址是否存在
+    const existing = await db
+      .select()
+      .from(schema.frequentAddresses)
+      .where(eq(schema.frequentAddresses.id, id));
+
+    if (existing.length === 0) {
+      throw createAppError.notFound('Address not found');
+    }
+
+    // 删除地址
     await db.delete(schema.frequentAddresses).where(eq(schema.frequentAddresses.id, id));
 
-    return { message: 'Frequent address deleted successfully', id };
-  } catch (error) {
-    throw createAppError.database('Failed to delete frequent address');
+    return {
+      message: 'Address removed from favorites',
+      id,
+    };
+  } catch (err) {
+    console.error('Failed to remove address:', err);
+    throw createAppError.database('Failed to remove address from favorites');
   }
 });

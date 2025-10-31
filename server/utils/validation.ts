@@ -41,20 +41,30 @@ export interface OrderInput {
   customerName: string;
   items: string;
   notes?: string;
+  contactType?: 'phone' | 'wechat';
+  contactValue?: string;
 }
 
 export const validateOrderInput = (data: any): OrderInput => {
-  validateRequired(data, ['address', 'customerName', 'items']);
+  // 只验证 address 和 customerName 为必填，items 允许为空（从常用客户添加时）
+  validateRequired(data, ['address', 'customerName']);
   validateAddress(data.address);
   validateCoordinates(data.lat, data.lng);
+
+  // 验证联系方式（如果提供）
+  if (data.contactType && !['phone', 'wechat'].includes(data.contactType)) {
+    throw createAppError.validation('Contact type must be either "phone" or "wechat"');
+  }
 
   return {
     address: data.address.trim(),
     lat: data.lat,
     lng: data.lng,
     customerName: data.customerName.trim(),
-    items: data.items.trim(),
+    items: data.items?.trim() || '', // 允许为空
     notes: data.notes?.trim(),
+    contactType: data.contactType,
+    contactValue: data.contactValue?.trim(),
   };
 };
 

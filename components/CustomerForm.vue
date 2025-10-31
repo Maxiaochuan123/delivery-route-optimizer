@@ -1,25 +1,13 @@
 <template>
   <v-form ref="formRef" @submit.prevent="handleSubmit">
     <!-- 地址自动完成 -->
-    <div class="d-flex ga-2 mb-3">
-      <AddressAutocomplete
-        v-model="addressData"
-        label="配送地址"
-        placeholder="请输入详细地址"
-        :rules="[rules.required]"
-        style="flex: 1"
-      />
-      <v-btn
-        icon="mdi-star"
-        variant="outlined"
-        color="warning"
-        style="margin-top: 4px"
-        @click="$emit('openFrequentDialog')"
-      >
-        <v-icon>mdi-star</v-icon>
-        <v-tooltip activator="parent" location="top">选择常用地址</v-tooltip>
-      </v-btn>
-    </div>
+    <AddressAutocomplete
+      v-model="addressData"
+      label="客户地址"
+      placeholder="请输入详细地址"
+      :rules="[rules.required]"
+      class="mb-3"
+    />
 
     <v-text-field
       v-model="form.customerName"
@@ -27,6 +15,15 @@
       placeholder="请输入客户姓名"
       :rules="[rules.required]"
       prepend-inner-icon="mdi-account"
+      variant="outlined"
+      class="mb-3"
+    />
+
+    <v-text-field
+      v-model="form.alias"
+      label="客户别名"
+      placeholder="选填：如老张、李总"
+      prepend-inner-icon="mdi-account-edit"
       variant="outlined"
       class="mb-3"
     />
@@ -62,26 +59,6 @@
       class="mb-3"
     />
 
-    <v-text-field
-      v-model="form.items"
-      label="商品信息"
-      placeholder="请输入商品信息"
-      :rules="[rules.required]"
-      prepend-inner-icon="mdi-package-variant"
-      variant="outlined"
-      class="mb-3"
-    />
-
-    <v-textarea
-      v-model="form.notes"
-      label="备注"
-      placeholder="选填：其他备注信息"
-      prepend-inner-icon="mdi-note-text"
-      variant="outlined"
-      rows="3"
-      class="mb-3"
-    />
-
     <slot name="actions" :submit="handleSubmit" :loading="loading" :valid="isValid">
       <v-btn
         type="submit"
@@ -91,38 +68,34 @@
         :loading="loading"
         :disabled="loading || !isValid"
       >
-        {{ mode === 'edit' ? '保存' : '添加订单' }}
+        保存
       </v-btn>
     </slot>
   </v-form>
 </template>
 
 <script setup lang="ts">
-interface OrderFormData {
+interface CustomerFormData {
   address: string;
   lat: number;
   lng: number;
   customerName: string;
-  items: string;
-  notes?: string;
+  alias?: string;
   contactType?: 'phone' | 'wechat';
   contactValue?: string;
 }
 
 interface Props {
-  mode?: 'create' | 'edit';
-  initialData?: Partial<OrderFormData>;
+  initialData?: Partial<CustomerFormData>;
   loading?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  mode: 'create',
   loading: false,
 });
 
 const emit = defineEmits<{
-  submit: [data: OrderFormData];
-  openFrequentDialog: [];
+  submit: [data: CustomerFormData];
 }>();
 
 const formRef = ref();
@@ -130,8 +103,7 @@ const addressData = ref<{ address: string; lat: number; lng: number } | null>(nu
 
 const form = reactive({
   customerName: '',
-  items: '',
-  notes: '',
+  alias: '',
   contactType: undefined as 'phone' | 'wechat' | undefined,
   contactValue: '',
 });
@@ -147,7 +119,7 @@ const rules = {
 
 const contactValueRules = computed(() => {
   if (!form.contactType) return [];
-  
+
   if (form.contactType === 'phone') {
     return [
       (value: string) => {
@@ -164,36 +136,39 @@ const contactValueRules = computed(() => {
       },
     ];
   }
-  
+
   return [];
 });
 
 const isValid = computed(() => {
-  return !!addressData.value && !!form.customerName && !!form.items;
+  return !!addressData.value && !!form.customerName;
 });
 
-// 初始化表单数据（编辑模式）
+// 初始化表单数据
 watch(
   () => props.initialData,
   (data) => {
-    if (data && props.mode === 'edit') {
-      form.customerName = data.customerName || '';
-      form.items = data.items || '';
-      form.notes = data.notes || '';
-      form.contactType = data.contactType;
-      form.contactValue = data.contactValue || '';
-      
-      // 如果有地址信息，设置地址数据
-      if (data.address && data.lat && data.lng) {
-        addressData.value = {
-          address: data.address,
-          lat: data.lat,
-          lng: data.lng,
-        };
-      }
+    if (data) {
+      // 使用nextTick确保DOM更新后再设置值
+      nextTick(() => {
+        form.customerName = data.customerName || '';
+        form.alias = data.alias || '';
+        // 确保contactType正确设置，即使是undefined也要显式赋值
+        form.contactType = data.contactType || undefined;
+        form.contactValue = data.contactValue || '';
+
+        // 如果有地址信息，设置地址数据
+        if (data.address && data.lat && data.lng) {
+          addressData.value = {
+            address: data.address,
+            lat: data.lat,
+            lng: data.lng,
+          };
+        }
+      });
     }
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 );
 
 const handleSubmit = async () => {
@@ -206,34 +181,23 @@ const handleSubmit = async () => {
     lat: addressData.value.lat,
     lng: addressData.value.lng,
     customerName: form.customerName,
-    items: form.items,
-    notes: form.notes || undefined,
+    alias: form.alias || undefined,
     contactType: form.contactType,
     contactValue: form.contactValue || undefined,
   });
-
-  // 如果是创建模式，重置表单
-  if (props.mode === 'create') {
-    addressData.value = null;
-    form.customerName = '';
-    form.items = '';
-    form.notes = '';
-    form.contactType = undefined;
-    form.contactValue = '';
-    formRef.value.reset();
-  }
 };
 
-// 暴露方法供父组件调用
+// 暴露方法和属性供父组件调用
 defineExpose({
   reset: () => {
     addressData.value = null;
     form.customerName = '';
-    form.items = '';
-    form.notes = '';
+    form.alias = '';
     form.contactType = undefined;
     form.contactValue = '';
     formRef.value?.reset();
   },
+  submit: handleSubmit,
+  valid: isValid,
 });
 </script>

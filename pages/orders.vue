@@ -12,9 +12,23 @@
     <v-row>
       <v-col cols="12">
         <v-card>
-          <v-card-title>添加订单</v-card-title>
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>添加订单</span>
+            <v-btn
+              variant="text"
+              color="primary"
+              prepend-icon="mdi-account-star"
+              @click="navigateTo('/customers')"
+            >
+              管理常用客户
+            </v-btn>
+          </v-card-title>
           <v-card-text>
-            <OrderForm mode="create" @submit="handleAddOrder" />
+            <OrderForm
+              mode="create"
+              @submit="handleAddOrder"
+              @open-frequent-dialog="frequentDialog = true"
+            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -27,8 +41,8 @@
           <v-card-title class="d-flex align-center justify-space-between">
             <div
               class="d-flex align-center flex-grow-1"
-              @click="goToDelivery"
               style="cursor: pointer"
+              @click="goToDelivery"
             >
               <v-icon class="mr-2">mdi-truck-delivery</v-icon>
               进行中
@@ -44,7 +58,7 @@
               @click.stop="handleAbandonDelivery"
             />
           </v-card-title>
-          <v-card-text @click="goToDelivery" style="cursor: pointer">
+          <v-card-text style="cursor: pointer" @click="goToDelivery">
             <OrderList :orders="inProgressOrders" :readonly="true" />
           </v-card-text>
         </v-card>
@@ -62,6 +76,15 @@
               <v-chip class="ml-2" size="small">{{ orders.length }} 个订单</v-chip>
             </div>
             <div v-if="orders.length > 0" class="d-flex align-center ga-2">
+              <v-btn
+                size="small"
+                variant="text"
+                color="error"
+                prepend-icon="mdi-delete-outline"
+                @click="handleCancelAllOrders"
+              >
+                取消
+              </v-btn>
               <v-btn size="small" variant="text" @click="selectAllOrders">
                 {{ selectedOrderIds.length === orders.length ? '取消全选' : '全选' }}
               </v-btn>
@@ -69,11 +92,12 @@
           </v-card-title>
           <v-card-text>
             <OrderList
+              v-model:selected-orders="selectedOrderIds"
               :orders="orders"
               :selectable="true"
-              v-model:selected-orders="selectedOrderIds"
               @edit="handleEditOrder"
               @delete="handleDeleteOrder"
+              @toggle-favorite="handleToggleFavorite"
             />
           </v-card-text>
         </v-card>
@@ -243,6 +267,9 @@
       </v-card>
     </v-dialog>
 
+    <!-- 常用地址选择对话框 -->
+    <FrequentAddressDialog v-model="frequentDialog" @confirm="handleFrequentAddressesConfirm" />
+
     <!-- 删除确认对话框 -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
@@ -253,6 +280,23 @@
           <v-btn variant="text" @click="deleteDialog = false">取消</v-btn>
           <v-btn color="error" variant="flat" :loading="deleting" @click="confirmDelete">
             删除
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- 取消所有订单确认对话框 -->
+    <v-dialog v-model="cancelAllDialog" max-width="400">
+      <v-card>
+        <v-card-title>确认取消订单</v-card-title>
+        <v-card-text>
+          确定要取消所有 {{ orders.length }} 个待开始订单吗？此操作无法撤销。
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="cancelAllDialog = false">取消</v-btn>
+          <v-btn color="error" variant="flat" :loading="cancelingAll" @click="confirmCancelAll">
+            确认取消
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -282,8 +326,12 @@ interface Order {
   customerName: string;
   items: string;
   notes?: string;
+  contactType?: 'phone' | 'wechat';
+  contactValue?: string;
   status: 'pending' | 'completed';
   createdAt: string;
+  isFavorite?: boolean;
+  favoriteAddressId?: number;
 }
 
 definePageMeta({
@@ -301,9 +349,12 @@ const selectedOrderIds = ref<number[]>([]);
 const editDialog = ref(false);
 const deleteDialog = ref(false);
 const abandonDialog = ref(false);
+const frequentDialog = ref(false);
+const cancelAllDialog = ref(false);
 const saving = ref(false);
 const deleting = ref(false);
 const abandoning = ref(false);
+const cancelingAll = ref(false);
 const optimizing = ref(false);
 const gettingLocation = ref(false);
 const geocoding = ref(false);
@@ -314,7 +365,7 @@ const routeOptimizationCard = ref<HTMLElement | null>(null);
 
 // 路线优化相关
 const startLocationData = ref<{ address: string; lat: number; lng: number } | null>(null);
-const routeResult = ref<any>(null);
+const routeResult = ref<unknown>(null);
 
 const startLocation = computed(() => {
   if (!startLocationData.value) return null;
@@ -352,6 +403,8 @@ const editForm = ref<{
   customerName: string;
   items: string;
   notes?: string;
+  contactType?: 'phone' | 'wechat';
+  contactValue?: string;
 }>();
 
 const deleteOrderId = ref<number | null>(null);
@@ -361,7 +414,35 @@ const loadOrders = async () => {
   try {
     // 加载待开始的订单
     const response = await $fetch<{ success: boolean; data: Order[] }>('/api/orders');
-    orders.value = response.data;
+
+    // 加载常用客户
+    const frequentResponse = await $fetch<{
+      success: boolean;
+      data: Array<{
+        id: number;
+        customerName: string;
+        address: string;
+        lat: number;
+        lng: number;
+      }>;
+    }>('/api/addresses/frequent');
+    const frequentCustomers = frequentResponse.data || [];
+
+    // 标记哪些订单的客户是常用客户（基于客户姓名和地址匹配）
+    orders.value = response.data.map((order) => {
+      const favoriteCustomer = frequentCustomers.find(
+        (customer) =>
+          customer.customerName === order.customerName &&
+          customer.address === order.address &&
+          customer.lat === order.lat &&
+          customer.lng === order.lng
+      );
+      return {
+        ...order,
+        isFavorite: !!favoriteCustomer,
+        favoriteAddressId: favoriteCustomer?.id,
+      };
+    });
 
     // 加载进行中的订单
     const inProgressResponse = await $fetch<{ success: boolean; data: Order[] }>(
@@ -389,6 +470,8 @@ const handleAddOrder = async (orderData: {
   customerName: string;
   items: string;
   notes?: string;
+  contactType?: 'phone' | 'wechat';
+  contactValue?: string;
 }) => {
   try {
     const response = await $fetch<{ success: boolean; data: Order }>('/api/orders', {
@@ -408,6 +491,78 @@ const handleAddOrder = async (orderData: {
   }
 };
 
+// 从常用客户批量添加订单
+const handleFrequentAddressesConfirm = async (customers: unknown[]) => {
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const customer of customers) {
+    try {
+      await $fetch<{ success: boolean; data: Order }>('/api/orders', {
+        method: 'POST',
+        body: {
+          customerName: customer.customerName,
+          address: customer.address,
+          lat: customer.lat,
+          lng: customer.lng,
+          items: '', // 留空，需要用户填写
+          notes: '', // 留空，需要用户填写
+        },
+      });
+
+      successCount++;
+    } catch (error) {
+      console.error(`Failed to add order for ${customer.customerName}:`, error);
+      failCount++;
+    }
+  }
+
+  // 重新加载订单列表以更新收藏状态
+  await loadOrders();
+
+  // 清除路线优化结果
+  routeResult.value = null;
+
+  if (failCount === 0) {
+    showSnackbar(`成功添加 ${successCount} 个订单，请补充订单商品信息和备注`);
+  } else {
+    showSnackbar(`添加完成：成功 ${successCount} 个，失败 ${failCount} 个`, 'warning');
+  }
+};
+
+// 切换收藏状态
+const handleToggleFavorite = async (order: Order) => {
+  try {
+    if (order.isFavorite && order.favoriteAddressId) {
+      // 取消收藏
+      await $fetch(`/api/addresses/frequent/${order.favoriteAddressId}`, {
+        method: 'DELETE',
+      });
+      showSnackbar('客户已取消收藏');
+    } else {
+      // 保存到常用客户
+      await $fetch('/api/addresses/frequent', {
+        method: 'POST',
+        body: {
+          customerName: order.customerName,
+          address: order.address,
+          lat: order.lat,
+          lng: order.lng,
+          contactType: order.contactType,
+          contactValue: order.contactValue,
+        },
+      });
+      showSnackbar('客户已收藏');
+    }
+
+    // 重新加载订单以更新收藏状态
+    await loadOrders();
+  } catch (error) {
+    showSnackbar('操作失败', 'error');
+    console.error('Failed to toggle favorite:', error);
+  }
+};
+
 // 编辑订单
 const handleEditOrder = (order: Order) => {
   editForm.value = {
@@ -418,6 +573,8 @@ const handleEditOrder = (order: Order) => {
     customerName: order.customerName,
     items: order.items,
     notes: order.notes || '',
+    contactType: order.contactType,
+    contactValue: order.contactValue,
   };
   editDialog.value = true;
 };
@@ -430,6 +587,8 @@ const handleSaveEdit = async (formData: {
   customerName: string;
   items: string;
   notes?: string;
+  contactType?: 'phone' | 'wechat';
+  contactValue?: string;
 }) => {
   if (!editForm.value) return;
 
@@ -446,13 +605,39 @@ const handleSaveEdit = async (formData: {
           customerName: formData.customerName,
           items: formData.items,
           notes: formData.notes || undefined,
+          contactType: formData.contactType,
+          contactValue: formData.contactValue,
         },
       }
     );
 
     const index = orders.value.findIndex((o) => o.id === editForm.value!.id);
     if (index !== -1) {
+      const oldOrder = orders.value[index];
       orders.value[index] = response.data;
+
+      // 如果订单客户是常用客户，同步更新常用客户信息
+      if (oldOrder && oldOrder.isFavorite && oldOrder.favoriteAddressId) {
+        try {
+          await $fetch(`/api/addresses/frequent/${oldOrder.favoriteAddressId}`, {
+            method: 'PUT',
+            body: {
+              customerName: formData.customerName,
+              address: formData.address,
+              lat: formData.lat,
+              lng: formData.lng,
+              contactType: formData.contactType,
+              contactValue: formData.contactValue,
+            },
+          });
+          showSnackbar('订单更新成功，常用客户已同步更新');
+        } catch (error) {
+          console.error('Failed to update frequent customer:', error);
+          showSnackbar('订单更新成功，但常用客户同步失败', 'warning');
+        }
+      } else {
+        showSnackbar('订单更新成功');
+      }
     }
 
     editDialog.value = false;
@@ -460,7 +645,8 @@ const handleSaveEdit = async (formData: {
     // 清除路线优化结果
     routeResult.value = null;
 
-    showSnackbar('订单更新成功');
+    // 重新加载订单以更新收藏状态
+    await loadOrders();
   } catch (error) {
     showSnackbar('更新订单失败', 'error');
     console.error('Failed to update order:', error);
@@ -498,12 +684,63 @@ const confirmDelete = async () => {
 
       showSnackbar('订单删除成功');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to delete order:', error);
     const errorMessage = error.data?.error?.message || '删除订单失败';
     showSnackbar(errorMessage, 'error');
   } finally {
     deleting.value = false;
+  }
+};
+
+// 处理取消所有订单
+const handleCancelAllOrders = () => {
+  if (orders.value.length === 0) {
+    showSnackbar('没有待开始的订单', 'warning');
+    return;
+  }
+  cancelAllDialog.value = true;
+};
+
+// 确认取消所有订单
+const confirmCancelAll = async () => {
+  cancelingAll.value = true;
+  let successCount = 0;
+  let failCount = 0;
+
+  try {
+    // 批量删除所有待开始的订单
+    for (const order of orders.value) {
+      try {
+        await $fetch(`/api/orders/${order.id}`, {
+          method: 'DELETE',
+        });
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to delete order ${order.id}:`, error);
+        failCount++;
+      }
+    }
+
+    // 清空订单列表
+    orders.value = [];
+    selectedOrderIds.value = [];
+
+    // 清除路线优化结果
+    routeResult.value = null;
+
+    cancelAllDialog.value = false;
+
+    if (failCount === 0) {
+      showSnackbar(`成功取消 ${successCount} 个订单`);
+    } else {
+      showSnackbar(`取消完成：成功 ${successCount} 个，失败 ${failCount} 个`, 'warning');
+    }
+  } catch (error) {
+    console.error('Failed to cancel all orders:', error);
+    showSnackbar('取消订单失败', 'error');
+  } finally {
+    cancelingAll.value = false;
   }
 };
 
@@ -524,7 +761,7 @@ const getCurrentLocation = () => {
 
       // 使用高德地图逆地理编码获取地址
       try {
-        const response = await $fetch<{ success: boolean; data: any }>('/api/geocode/reverse', {
+        const response = await $fetch<{ success: boolean; data: unknown }>('/api/geocode/reverse', {
           method: 'POST',
           body: { lat, lng },
         });
@@ -594,7 +831,7 @@ const geocodeSelectedOrders = async () => {
   for (const order of ordersToGeocode) {
     try {
       // 获取坐标
-      const geocodeResponse = await $fetch<{ success: boolean; data: any }>('/api/geocode', {
+      const geocodeResponse = await $fetch<{ success: boolean; data: unknown }>('/api/geocode', {
         method: 'POST',
         body: { address: order.address },
       });
@@ -660,21 +897,35 @@ const handleOptimize = async () => {
     return;
   }
 
+  // 检查选中的订单是否都已填写商品信息
+  const ordersWithoutItems = selectedOrders.value.filter(
+    (order) => !order.items || order.items.trim() === ''
+  );
+
+  if (ordersWithoutItems.length > 0) {
+    const customerNames = ordersWithoutItems.map((o) => o.customerName).join('、');
+    showSnackbar(`请先补充以下订单的商品信息：${customerNames}`, 'error');
+    return;
+  }
+
   optimizing.value = true;
 
   try {
     // 调用路线优化 API，只使用选中的订单
-    const response = await $fetch<{ success: boolean; data: any }>('/api/routes/optimize-orders', {
-      method: 'POST',
-      body: {
-        startLocation: {
-          lat: startLocation.value.lat,
-          lng: startLocation.value.lng,
-          address: startLocation.value.address,
+    const response = await $fetch<{ success: boolean; data: unknown }>(
+      '/api/routes/optimize-orders',
+      {
+        method: 'POST',
+        body: {
+          startLocation: {
+            lat: startLocation.value.lat,
+            lng: startLocation.value.lng,
+            address: startLocation.value.address,
+          },
+          orderIds: selectedOrderIds.value,
         },
-        orderIds: selectedOrderIds.value,
-      },
-    });
+      }
+    );
 
     if (response.success) {
       routeResult.value = response.data;
@@ -687,7 +938,7 @@ const handleOptimize = async () => {
         behavior: 'smooth',
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Route optimization error:', error);
     showSnackbar(error.data?.error?.message || '路线优化失败', 'error');
   } finally {
@@ -714,6 +965,12 @@ const startSingleOrderDelivery = async () => {
   // 检查订单是否有坐标
   if (!selectedOrder.lat || !selectedOrder.lng) {
     showSnackbar('订单缺少坐标信息，请先进行地理编码', 'error');
+    return;
+  }
+
+  // 检查订单是否已填写商品信息
+  if (!selectedOrder.items || selectedOrder.items.trim() === '') {
+    showSnackbar('请先补充订单的商品信息', 'error');
     return;
   }
 
@@ -748,7 +1005,7 @@ const startSingleOrderDelivery = async () => {
     const { setRouteData } = useRouteStore();
     setRouteData(simpleRoute);
     navigateTo('/delivery');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Start single order delivery error:', error);
     showSnackbar('开始配送失败', 'error');
   }
@@ -848,8 +1105,19 @@ watch(
 );
 
 // 页面加载时获取订单列表
-onMounted(() => {
-  loadOrders();
+onMounted(async () => {
+  await loadOrders();
+
+  // 检查是否有来自其他页面的消息
+  const route = useRoute();
+  if (route.query.message) {
+    const message = route.query.message as string;
+    const type = (route.query.type as 'success' | 'error' | 'warning') || 'success';
+    showSnackbar(message, type);
+
+    // 清除 URL 中的 query 参数
+    await navigateTo({ path: '/orders', query: {} }, { replace: true });
+  }
 });
 </script>
 

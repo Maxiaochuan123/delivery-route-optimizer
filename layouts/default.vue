@@ -22,6 +22,11 @@
         <span>历史</span>
       </v-btn>
     </v-bottom-navigation>
+
+    <!-- 全局 Snackbar -->
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
+      {{ snackbarText }}
+    </v-snackbar>
   </v-app>
 </template>
 
@@ -37,6 +42,9 @@ const activeTab = computed(() => {
   if (path.startsWith('/history')) return 'history';
   return 'home';
 });
+
+// Global snackbar
+const { snackbar, snackbarText, snackbarColor } = useSnackbar();
 </script>
 
 <style scoped>

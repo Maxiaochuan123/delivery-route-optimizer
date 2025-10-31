@@ -1,4 +1,4 @@
-import { defineApiHandler, getValidatedBody } from '../../../utils/handler';
+import { defineApiHandler } from '../../../utils/handler';
 import { db, schema } from '../../../database/db';
 import { eq, inArray } from 'drizzle-orm';
 import { createAppError } from '../../../utils/errors';
@@ -20,10 +20,10 @@ export default defineApiHandler(async (event) => {
     throw createAppError.validation('Invalid session ID');
   }
 
-  const body = await getValidatedBody<CompleteSessionRequest>(event, (data) => data);
+  const body = await readBody<CompleteSessionRequest>(event);
 
   try {
-    const completedAtTime = body.completedAt || new Date().toISOString();
+    const completedAtTime = body?.completedAt || new Date().toISOString();
 
     // 获取会话的所有订单
     const routes = await db
@@ -63,10 +63,10 @@ export default defineApiHandler(async (event) => {
       session,
       updatedOrders: orderIds.length,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to complete delivery session:', error);
 
-    if (error.name === 'AppError') {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'AppError') {
       throw error;
     }
 

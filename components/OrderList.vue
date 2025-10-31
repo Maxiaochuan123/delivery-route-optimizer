@@ -26,10 +26,10 @@
           <v-checkbox
             v-if="selectable"
             :model-value="selectedOrders.includes(order.id)"
-            @update:model-value="toggleSelection(order.id)"
             hide-details
             density="compact"
             class="mr-2"
+            @update:model-value="toggleSelection(order.id)"
           />
           <v-avatar :color="getStatusColor(order.status)" size="40">
             <span class="text-h6">{{ index + 1 }}</span>
@@ -57,6 +57,13 @@
 
         <template #append>
           <div v-if="!props.readonly" class="d-flex flex-column ga-2">
+            <v-btn
+              :icon="order.isFavorite ? 'mdi-star' : 'mdi-star-outline'"
+              size="small"
+              variant="text"
+              :color="order.isFavorite ? 'warning' : 'default'"
+              @click="$emit('toggleFavorite', order)"
+            />
             <v-btn
               icon="mdi-pencil"
               size="small"
@@ -89,6 +96,7 @@ interface Order {
   notes?: string;
   status: 'pending' | 'completed';
   createdAt: string;
+  isFavorite?: boolean;
 }
 
 const props = defineProps<{
@@ -101,6 +109,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   edit: [order: Order];
   delete: [id: number];
+  toggleFavorite: [order: Order];
   'update:selectedOrders': [ids: number[]];
 }>();
 
